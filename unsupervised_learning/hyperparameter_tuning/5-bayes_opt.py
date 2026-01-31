@@ -75,13 +75,18 @@ class BayesianOptimization:
         for i in range(iterations):
             X_next, _ = self.acquisition()
 
-            if X_next in self.gp.X:
+            # Check if X_next is already in self.gp.X (accounting for floating point precision)
+            if np.any(np.isclose(self.gp.X, X_next, rtol=1e-10, atol=1e-10)):
                 break
 
             Y = self.f(X_next)
             self.gp.update(X_next, Y)
 
-        idx = np.argmin(self.gp.Y)
+        if self.minimize:
+            idx = np.argmin(self.gp.Y)
+        else:
+            idx = np.argmax(self.gp.Y)
+            
         X_opt = self.gp.X[idx]
         Y_opt = np.array(self.gp.Y[idx])
         return X_opt, Y_opt
