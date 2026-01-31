@@ -76,7 +76,7 @@ class BayesianOptimization:
             X_next, _ = self.acquisition()
 
             # Stop early if X_next already sampled
-            if np.any(self.gp.X == X_next):
+            if X_next.tolist() in self.gp.X.tolist():
                 break
 
             Y_next = self.f(X_next)
