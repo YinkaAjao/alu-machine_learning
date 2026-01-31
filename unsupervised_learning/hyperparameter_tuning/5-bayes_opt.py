@@ -63,7 +63,7 @@ class BayesianOptimization:
         X_next = self.X_s[np.argmax(EI)]
 
         return X_next, np.array(EI)
-    
+
     def optimize(self, iterations=100):
         """
         Optimizes the black-box function
@@ -76,7 +76,7 @@ class BayesianOptimization:
             X_next, _ = self.acquisition()
 
             # Stop early if X_next already sampled
-            if np.any(np.all(np.isclose(self.gp.X, X_next.reshape(1, -1)), axis=1)):
+            if np.any(self.gp.X == X_next):
                 break
 
             Y_next = self.f(X_next)
