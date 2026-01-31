@@ -68,25 +68,25 @@ class BayesianOptimization:
         """
         Optimizes the black-box function
         Args:
-        iterations: maximum number of iterations to perfor
-        
+            iterations: maximum number of iterations to perform
+
         Returns: X_opt, Y_opt
         """
         for _ in range(iterations):
             X_next, _ = self.acquisition()
 
             # Stop early if X_next already sampled
-            if np.any(np.isclose(self.gp.X, X_next).all(axis=1)):
+            if np.any(np.all(np.isclose(self.gp.X, X_next.reshape(1, -1)), axis=1)):
                 break
 
             Y_next = self.f(X_next)
             self.gp.update(X_next, Y_next)
-            
-        # Select optimal point
+
         if self.minimize:
             idx = np.argmin(self.gp.Y)
         else:
             idx = np.argmax(self.gp.Y)
+
         X_opt = self.gp.X[idx]
         Y_opt = np.array(self.gp.Y[idx])
 
