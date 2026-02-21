@@ -1,22 +1,35 @@
 #!/usr/bin/env python3
 """rocket frequency"""
+
 import requests
 
 
 if __name__ == '__main__':
-    """rocket frequency"""
-    url = "https://api.spacexdata.com/v4/launches"
-    r = requests.get(url)
-    rocket_dict = {"5e9d0d95eda69955f709d1eb": 0}
+    launches_url = "https://api.spacexdata.com/v4/launches"
+    rockets_url = "https://api.spacexdata.com/v4/rockets"
 
-    for launch in r.json():
-        if launch["rocket"] in rocket_dict:
-            rocket_dict[launch["rocket"]] += 1
-        else:
-            rocket_dict[launch["rocket"]] = 1
-    for key, value in sorted(rocket_dict.items(),
-                             key=lambda kv: kv[1], reverse=True):
-        rurl = "https://api.spacexdata.com/v4/rockets/" + key
-        req = requests.get(rurl)
+    # Fetch all launches
+    launches = requests.get(launches_url).json()
 
-        print(req.json()["name"] + ": " + str(value))
+    # Count launches per rocket ID
+    rocket_counts = {}
+    for launch in launches:
+        rocket_id = launch["rocket"]
+        rocket_counts[rocket_id] = rocket_counts.get(rocket_id, 0) + 1
+
+    # Fetch all rockets to map ID -> name
+    rockets = requests.get(rockets_url).json()
+    rocket_names = {rocket["id"]: rocket["name"] for rocket in rockets}
+
+    # Build sortable list: (name, count)
+    result = [
+        (rocket_names[rocket_id], count)
+        for rocket_id, count in rocket_counts.items()
+    ]
+
+    # Sort by count desc, then name asc
+    result.sort(key=lambda x: (-x[1], x[0]))
+
+    # Print result
+    for name, count in result:
+        print(f"{name}: {count}")
