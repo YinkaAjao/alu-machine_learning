@@ -41,16 +41,18 @@ class NST:
             alpha [float]: weight for content cost
             beta [float]: weight for style cost
         """
-        if type(style_image) is not np.ndarray or len(style_image.shape) != 3:
+        if type(style_image) is not np.ndarray or \
+                len(style_image.shape) != 3:
             raise TypeError(
                 "style_image must be a numpy.ndarray with shape (h, w, 3)")
-        if type(content_image) is not np.ndarray or len(content_image.shape) != 3:
+        if type(content_image) is not np.ndarray or \
+                len(content_image.shape) != 3:
             raise TypeError(
                 "content_image must be a numpy.ndarray with shape (h, w, 3)")
-        
+
         style_h, style_w, style_c = style_image.shape
         content_h, content_w, content_c = content_image.shape
-        
+
         if style_h <= 0 or style_w <= 0 or style_c != 3:
             raise TypeError(
                 "style_image must be a numpy.ndarray with shape (h, w, 3)")
@@ -93,8 +95,8 @@ class NST:
 
         resized = tf.image.resize_bicubic(np.expand_dims(image, axis=0),
                                           size=(h_new, w_new))
-        rescaled = resized / 255
-        rescaled = tf.clip_by_value(rescaled, 0, 1)
+        rescaled = resized / 255.0
+        rescaled = tf.clip_by_value(rescaled, 0.0, 1.0)
         return rescaled
 
     def load_model(self):
@@ -128,20 +130,17 @@ class NST:
     @staticmethod
     def gram_matrix(input_layer):
         """
-        Calculates gram matrices
+        Calculates gram matrices using tf.linalg.einsum for precise math
         """
-        if not isinstance(input_layer, (tf.Tensor, tf.Variable)):
+        if not isinstance(input_layer, (tf.Tensor, tf.Variable)) or \
+                len(input_layer.shape) != 4:
             raise TypeError("input_layer must be a tensor of rank 4")
-        if len(input_layer.shape) != 4:
-            raise TypeError("input_layer must be a tensor of rank 4")
-        
-        _, h, w, c = input_layer.shape
-        product = int(h * w)
-        features = tf.reshape(input_layer, (product, c))
-        gram = tf.matmul(features, features, transpose_a=True)
-        gram = tf.expand_dims(gram, axis=0)
-        gram /= tf.cast(product, tf.float32)
-        return gram
+
+        result = tf.linalg.einsum('bijc,bijd->bcd', input_layer, input_layer)
+        input_shape = tf.shape(input_layer)
+        num_locations = tf.cast(input_shape[1] * input_shape[2], tf.float32)
+
+        return result / num_locations
 
     def generate_features(self):
         """
@@ -149,9 +148,9 @@ class NST:
         """
         VGG19_model = tf.keras.applications.vgg19
         preprocess_style = VGG19_model.preprocess_input(
-            self.style_image * 255)
+            self.style_image * 255.0)
         preprocess_content = VGG19_model.preprocess_input(
-            self.content_image * 255)
+            self.content_image * 255.0)
 
         style_features = self.model(preprocess_style)[:-1]
         content_feature = self.model(preprocess_content)[-1]
@@ -168,17 +167,17 @@ class NST:
         Calculates the style cost for a single layer
         """
         if not isinstance(style_output, (tf.Tensor, tf.Variable)) or \
-           len(style_output.shape) != 4:
+                len(style_output.shape) != 4:
             raise TypeError("style_output must be a tensor of rank 4")
-        
-        _, h, w, c = style_output.shape
-        
+
+        c = style_output.shape[-1]
+
         if not isinstance(gram_target, (tf.Tensor, tf.Variable)) or \
-           len(gram_target.shape) != 3 or gram_target.shape != (1, c, c):
+                len(gram_target.shape) != 3 or gram_target.shape != (1, c, c):
             raise TypeError(
                 "gram_target must be a tensor of shape [1, {}, {}]".format(
                     c, c))
-            
+
         gram_style = self.gram_matrix(style_output)
         diff = tf.reduce_mean(tf.square(gram_style - gram_target))
         return diff
@@ -199,13 +198,12 @@ class NST:
             raise TypeError(
                 "style_outputs must be a list with a length of {}".format(
                     length))
-            
+
         weight = 1.0 / length
         style_cost = 0.0
-        
+
         for i in range(length):
-            style_cost += (
-                self.layer_style_cost(style_outputs[i],
-                                      self.gram_style_features[i]) * weight)
-            
+            style_cost += weight * self.layer_style_cost(
+                style_outputs[i], self.gram_style_features[i])
+
         return style_cost
