@@ -73,10 +73,10 @@ class NST:
            len(content_image.shape) != 3:
             raise TypeError(
                 "content_image must be a numpy.ndarray with shape (h, w, 3)")
-        
+
         style_h, style_w, style_c = style_image.shape
         content_h, content_w, content_c = content_image.shape
-        
+
         if style_h <= 0 or style_w <= 0 or style_c != 3:
             raise TypeError(
                 "style_image must be a numpy.ndarray with shape (h, w, 3)")
@@ -266,5 +266,4 @@ class NST:
             style_cost += (
                 self.layer_style_cost(style_outputs[i],
                                       self.gram_style_features[i]) * weight)
-        return style_cost`
-`
+        return style_cost
