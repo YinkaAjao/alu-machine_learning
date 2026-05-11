@@ -3,7 +3,6 @@
 Defines class NST that performs tasks for neural style transfer
 """
 
-
 import numpy as np
 import tensorflow as tf
 
@@ -74,8 +73,10 @@ class NST:
            len(content_image.shape) != 3:
             raise TypeError(
                 "content_image must be a numpy.ndarray with shape (h, w, 3)")
+        
         style_h, style_w, style_c = style_image.shape
         content_h, content_w, content_c = content_image.shape
+        
         if style_h <= 0 or style_w <= 0 or style_c != 3:
             raise TypeError(
                 "style_image must be a numpy.ndarray with shape (h, w, 3)")
@@ -184,7 +185,7 @@ class NST:
         """
         if not isinstance(input_layer, (tf.Tensor, tf.Variable)):
             raise TypeError("input_layer must be a tensor of rank 4")
-        if len(input_layer.shape) is not 4:
+        if len(input_layer.shape) != 4:
             raise TypeError("input_layer must be a tensor of rank 4")
         _, h, w, c = input_layer.shape
         product = int(h * w)
@@ -231,11 +232,11 @@ class NST:
             the layer's style cost
         """
         if not isinstance(style_output, (tf.Tensor, tf.Variable)) or \
-           len(style_output.shape) is not 4:
+           len(style_output.shape) != 4:
             raise TypeError("style_output must be a tensor of rank 4")
         one, h, w, c = style_output.shape
         if not isinstance(gram_target, (tf.Tensor, tf.Variable)) or \
-           len(gram_target.shape) is not 3 or gram_target.shape != (1, c, c):
+           len(gram_target.shape) != 3 or gram_target.shape != (1, c, c):
             raise TypeError(
                 "gram_target must be a tensor of shape [1, {}, {}]".format(
                     c, c))
@@ -265,4 +266,5 @@ class NST:
             style_cost += (
                 self.layer_style_cost(style_outputs[i],
                                       self.gram_style_features[i]) * weight)
-        return style_cost
+        return style_cost`
+`
