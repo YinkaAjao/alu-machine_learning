@@ -75,10 +75,8 @@ class NST:
            len(content_image.shape) != 3:
             raise TypeError(
                 "content_image must be a numpy.ndarray with shape (h, w, 3)")
-
         style_h, style_w, style_c = style_image.shape
         content_h, content_w, content_c = content_image.shape
-
         if style_h <= 0 or style_w <= 0 or style_c != 3:
             raise TypeError(
                 "style_image must be a numpy.ndarray with shape (h, w, 3)")
@@ -190,7 +188,7 @@ class NST:
         if len(input_layer.shape) != 4:
             raise TypeError("input_layer must be a tensor of rank 4")
         _, h, w, c = input_layer.shape
-        product = int(h * w)
+        product = h * w
         features = tf.reshape(input_layer, (product, c))
         gram = tf.matmul(features, features, transpose_a=True)
         gram = tf.expand_dims(gram, axis=0)
@@ -238,14 +236,10 @@ class NST:
             raise TypeError("style_output must be a tensor of rank 4")
         one, h, w, c = style_output.shape
         if not isinstance(gram_target, (tf.Tensor, tf.Variable)) or \
-           len(gram_target.shape) != 3 or gram_target.shape != (1, c, c):
+           len(gram_target.shape) != 3:
             raise TypeError(
                 "gram_target must be a tensor of shape [1, {}, {}]".format(
                     c, c))
-        
-        gram_style = self.gram_matrix(style_output)
-        diff = tf.reduce_mean(tf.square(gram_style - gram_target))
-        return diff
 
     def style_cost(self, style_outputs):
         """
@@ -263,14 +257,6 @@ class NST:
             raise TypeError(
                 "style_outputs must be a list with a length of {}".format(
                     length))
-        
-        weight = 1 / length
-        style_cost = 0
-        for i in range(length):
-            style_cost += (
-                self.layer_style_cost(style_outputs[i],
-                                      self.gram_style_features[i]) * weight)
-        return style_cost
 
     def content_cost(self, content_output):
         """
@@ -288,6 +274,3 @@ class NST:
            content_output.shape != shape:
             raise TypeError(
                 "content_output must be a tensor of shape {}".format(shape))
-        
-        diff = tf.reduce_mean(tf.square(content_output - self.content_feature))
-        return diff
