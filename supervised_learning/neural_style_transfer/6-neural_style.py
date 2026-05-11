@@ -132,8 +132,8 @@ class NST:
 
         resized = tf.image.resize_bicubic(np.expand_dims(image, axis=0),
                                           size=(h_new, w_new))
-        rescaled = resized / 255
-        rescaled = tf.clip_by_value(rescaled, 0, 1)
+        rescaled = resized / 255.0
+        rescaled = tf.clip_by_value(rescaled, 0.0, 1.0)
         return (rescaled)
 
     def load_model(self):
@@ -150,10 +150,8 @@ class NST:
                                                   weights='imagenet')
         VGG19_model.save("VGG19_base_model")
         custom_objects = {'MaxPooling2D': tf.keras.layers.AveragePooling2D}
-
         vgg = tf.keras.models.load_model("VGG19_base_model",
                                          custom_objects=custom_objects)
-
         style_outputs = []
         content_output = None
 
@@ -162,13 +160,10 @@ class NST:
                 style_outputs.append(layer.output)
             if layer.name in self.content_layer:
                 content_output = layer.output
-
             layer.trainable = False
 
         outputs = style_outputs + [content_output]
-
-        model = tf.keras.models.Model(vgg.input, outputs)
-        self.model = model
+        self.model = tf.keras.models.Model(vgg.input, outputs)
 
     @staticmethod
     def gram_matrix(input_layer):
@@ -188,7 +183,7 @@ class NST:
         if len(input_layer.shape) != 4:
             raise TypeError("input_layer must be a tensor of rank 4")
         _, h, w, c = input_layer.shape
-        product = h * w
+        product = int(h * w)
         features = tf.reshape(input_layer, (product, c))
         gram = tf.matmul(features, features, transpose_a=True)
         gram = tf.expand_dims(gram, axis=0)
@@ -204,9 +199,9 @@ class NST:
         """
         VGG19_model = tf.keras.applications.vgg19
         preprocess_style = VGG19_model.preprocess_input(
-            self.style_image * 255)
+            self.style_image * 255.0)
         preprocess_content = VGG19_model.preprocess_input(
-            self.content_image * 255)
+            self.content_image * 255.0)
 
         style_features = self.model(preprocess_style)[:-1]
         content_feature = self.model(preprocess_content)[-1]
@@ -234,12 +229,15 @@ class NST:
         if not isinstance(style_output, (tf.Tensor, tf.Variable)) or \
            len(style_output.shape) != 4:
             raise TypeError("style_output must be a tensor of rank 4")
-        one, h, w, c = style_output.shape
+        _, h, w, c = style_output.shape
         if not isinstance(gram_target, (tf.Tensor, tf.Variable)) or \
-           len(gram_target.shape) != 3:
+           len(gram_target.shape) != 3 or gram_target.shape != (1, c, c):
             raise TypeError(
                 "gram_target must be a tensor of shape [1, {}, {}]".format(
                     c, c))
+        gram_style = self.gram_matrix(style_output)
+        diff = tf.reduce_mean(tf.square(gram_style - gram_target))
+        return diff
 
     def style_cost(self, style_outputs):
         """
@@ -257,6 +255,13 @@ class NST:
             raise TypeError(
                 "style_outputs must be a list with a length of {}".format(
                     length))
+        weight = 1.0 / length
+        style_cost = 0.0
+        for i in range(length):
+            style_cost += (
+                self.layer_style_cost(style_outputs[i],
+                                      self.gram_style_features[i]) * weight)
+        return style_cost
 
     def content_cost(self, content_output):
         """
@@ -274,3 +279,5 @@ class NST:
            content_output.shape != shape:
             raise TypeError(
                 "content_output must be a tensor of shape {}".format(shape))
+        diff = tf.reduce_mean(tf.square(content_output - self.content_feature))
+        return diff
