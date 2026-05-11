@@ -97,7 +97,7 @@ class NST:
                                           size=(h_new, w_new))
         rescaled = resized / 255.0
         rescaled = tf.clip_by_value(rescaled, 0.0, 1.0)
-        return (rescaled)
+        return rescaled
 
     def load_model(self):
         """
@@ -142,7 +142,7 @@ class NST:
         gram = tf.matmul(features, features, transpose_a=True)
         gram = tf.expand_dims(gram, axis=0)
         gram /= tf.cast(product, tf.float32)
-        return (gram)
+        return gram
 
     def generate_features(self):
         """
@@ -197,12 +197,12 @@ class NST:
             raise TypeError(
                 "style_outputs must be a list with a length of {}".format(
                     length))
-        
+
         weight = 1.0 / length
         costs = []
-        
+
         for i in range(length):
-            costs.append(weight * self.layer_style_cost(
+            costs.append(self.layer_style_cost(
                 style_outputs[i], self.gram_style_features[i]))
-            
-        return tf.add_n(costs)
+
+        return tf.add_n(costs) * weight
